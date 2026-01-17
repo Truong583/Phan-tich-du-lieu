@@ -48,6 +48,14 @@ def process_data():
     df.dropna(inplace=True)
     df.reset_index(drop=True, inplace=True)
 
+    # --- PHÂN TÍCH: KIỂM TRA ĐỘ TƯƠNG QUAN ---
+    print("\n🔍 PHÂN TÍCH ĐỘ TƯƠNG QUAN VỚI TARGET (QUAN TRỌNG):")
+    # Chỉ tính toán trên các cột số
+    numeric_df = df.select_dtypes(include=['float64', 'int64'])
+    correlation = numeric_df.corr()['target'].sort_values(ascending=False)
+    print(correlation)
+    print("-" * 50)
+
     # --- TỰ ĐỘNG TẠO THƯ MỤC NẾU CHƯA CÓ ---
     # Lấy tên thư mục cha từ đường dẫn file output
     thu_muc_luu = os.path.dirname(OUTPUT_FILE)

@@ -1,13 +1,8 @@
-# Bỏ qua thư mục môi trường ảo (Rất quan trọng)
 venv/
-env/
-
-# Bỏ qua dữ liệu (Vì file CSV rất nặng, Github không cho up quá 100MB)
-data/
-
-# Bỏ qua các file rác của Python
 __pycache__/
-*.pyc
 *.csv
-# Bỏ qua thư mục IDE (VS Code)
+*.h5
+*.pkl
+data/
+src/models/
 .vscode/
