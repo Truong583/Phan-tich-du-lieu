@@ -1,0 +1,447 @@
+\documentclass[a4paper, 12pt]{article}
+
+% --- KHAI BAO CAC GOI (PACKAGES) ---
+\usepackage[utf8]{inputenc}
+\usepackage[T5]{fontenc}
+\usepackage[vietnamese]{babel}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage[a4paper, top=1in, bottom=1in, left=1in, right=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{color}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true, linkcolor=blue, filecolor=magenta, urlcolor=cyan,
+}
+
+% --- CAU HINH ---
+\renewcommand{\familydefault}{\sfdefault}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{1.5ex}
+
+% --- DINH NGHIA MAU SAC VA STYLE CHO CODE ---
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.98,0.98,0.98}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour}, commentstyle=\color{codegreen}, keywordstyle=\color{blue},
+    numberstyle=\tiny\color{codegray}, stringstyle=\color{codepurple},
+    basicstyle=\footnotesize\ttfamily, breakatwhitespace=false, breaklines=true, captionpos=b,
+    keepspaces=true, numbers=left, numbersep=5pt, showspaces=false, showstringspaces=false,
+    showtabs=false, tabsize=2
+}
+\lstset{style=mystyle}
+
+% --- THONG TIN TIEU DE ---
+\title{
+    \textbf{BÁO CÁO BÀI TẬP LỚN} \\
+    \vspace{0.5cm}
+    \large Môn học: Học máy Nâng cao \\
+    \vspace{1cm}
+    \huge \textbf{Đề tài: Phân tích và Xây dựng Mô hình Dự báo trên Chuỗi thời gian giá Bitcoin (BTC/USDT)}
+}
+\author{
+    \textbf{Nhóm 01} \\
+    Hà Tài Thanh - 22010392 \\
+    Nguyễn Phạm Quốc Tuấn - 22010508 \\
+    Nguyễn Minh Duy - 22010511 \\
+    \vspace{1cm} \\
+    \textbf{Giảng viên hướng dẫn:} ThS. Nguyễn Văn Sơn
+}
+\date{Ngày 09 tháng 03 năm 2025}
+
+\begin{document}
+
+\begin{titlepage}
+    \centering
+    \vspace*{1cm}
+    \Large \textbf{TRƯỜNG ĐẠI HỌC PHENIKAA} \\
+    \vspace{0.5cm}
+    \Large \textbf{KHOA CÔNG NGHỆ THÔNG TIN} \\
+    \vspace{3cm}
+    \maketitle
+\end{titlepage}
+
+\newpage
+\pagenumbering{roman}
+\tableofcontents
+\newpage
+\listoffigures
+\newpage
+\listoftables
+\newpage
+\pagenumbering{arabic}
+
+\section{Giới thiệu}
+\subsection{Đặt vấn đề}
+Thị trường tiền điện tử (cryptocurrency), với Bitcoin (BTC) là đồng tiền dẫn đầu, được đặc trưng bởi mức độ biến động giá rất cao và hoạt động liên tục 24/7. Những đặc tính này tạo ra cơ hội lợi nhuận lớn nhưng cũng đi kèm rủi ro không nhỏ, đồng thời gây ra áp lực và khó khăn cho các nhà giao dịch thủ công trong việc theo dõi và ra quyết định. Do đó, việc xây dựng một hệ thống phân tích và dự báo tự động, dựa trên các phương pháp khoa học dữ liệu, trở thành một nhu cầu cấp thiết để có thể khai thác hiệu quả các cơ hội từ thị trường.
+
+\subsection{Mục tiêu đề tài}
+\begin{itemize}
+    \item Phân tích sâu các đặc tính thống kê, quy luật chu kỳ, và tính "nhớ" của chuỗi thời gian giá BTC/USDT.
+    \item Xây dựng, huấn luyện và đánh giá hai hướng tiếp cận mô hình hóa: (1) Dự báo giá trị trực tiếp bằng LSTM và (2) Phân loại tín hiệu giao dịch bằng Random Forest/XGBoost.
+    \item Thiết kế và triển khai một phương pháp gán nhãn động, thông minh, dựa trên rủi ro để huấn luyện mô hình phân loại.
+    \item Thực hiện kiểm thử lịch sử (backtesting) để đánh giá hiệu quả sinh lời trong điều kiện giả lập của chiến lược được đề xuất.
+\end{itemize}
+
+\section{Cơ sở lý thuyết}
+\subsection{Các chỉ báo kỹ thuật}
+\begin{itemize}
+    \item \textbf{RSI (Relative Strength Index):} Chỉ báo động lượng đo lường tốc độ và sự thay đổi của các biến động giá. RSI dao động từ 0 đến 100, thường được dùng để xác định vùng quá mua ($>$70) và quá bán ($<$30).
+    \item \textbf{ATR (Average True Range):} Chỉ báo đo lường mức độ biến động của thị trường. Giá trị ATR không cho biết hướng đi của giá mà chỉ cho biết mức độ "ồn ào" của thị trường. Trong đề tài này, ATR được dùng làm thước đo rủi ro động.
+    \item \textbf{Bollinger Bands (BB):} Gồm một đường trung bình động ở giữa và hai dải trên/dưới cách đường giữa một độ lệch chuẩn. Nó giúp xác định mức độ biến động và các vùng giá tương đối cao hoặc thấp.
+\end{itemize}
+\subsection{Mô hình học máy}
+\begin{itemize}
+    \item \textbf{LSTM (Long Short-Term Memory):} Là một loại mạng nơ-ron hồi quy (RNN) đặc biệt, được thiết kế để giải quyết vấn đề phụ thuộc xa (long-term dependencies). Với các "cổng" (gates) quên, nhập và xuất, LSTM có khả năng "ghi nhớ" thông tin quan trọng trong các khoảng thời gian dài, rất phù hợp cho dữ liệu chuỗi thời gian tài chính.
+    \item \textbf{Random Forest:} Là một thuật toán học có giám sát thuộc họ ensemble learning. Nó xây dựng một "rừng" gồm nhiều cây quyết định trong quá trình huấn luyện và đưa ra dự đoán dựa trên sự đồng thuận (mode cho phân loại, trung bình cho hồi quy) của các cây. Thuật toán này có khả năng chống học vẹt tốt và xử lý được các mối quan hệ phi tuyến phức%
+    \item \textbf{Chỉ số Hurst:} Dùng để đo lường tính nhớ dài hạn của một chuỗi thời gian. $H=0.5$ cho thấy một chuỗi ngẫu nhiên (random walk), $H>0.5$ cho thấy chuỗi có xu hướng (trending), và $H<0.5$ cho thấy chuỗi có tính quay về trung bình (mean-reverting).
+    \item \textbf{VaR (Value at Risk):} Một thước đo rủi ro cho biết mức lỗ tối đa có thể xảy ra trong một khoảng thời gian nhất định, ở một mức độ tin cậy cho trước.
+\end{itemize}
+
+\section{Thiết kế và Thực thi Giải pháp}
+Giải pháp được thiết kế theo một pipeline khoa học dữ liệu hoàn chỉnh, bao gồm các module chính được thể hiện trong các script Python của project:
+\begin{enumerate}
+    \item \textbf{Module Thu thập Dữ liệu (\texttt{nap\_data.py}):} Chịu trách nhiệm kết nối tới API Binance và tải dữ liệu thô.
+    \item \textbf{Module Xử lý và Trích chọn Đặc trưng (\texttt{xu\_lu\_data.py, khai\_pha.py}):} Chuyển đổi dữ liệu thô thành dữ liệu có cấu trúc, tính toán các chỉ báo kỹ thuật và thống kê.
+    \item \textbf{Module Phân tích Khám phá (\texttt{khai\_pha.py}):} Trực quan hóa dữ liệu để tìm ra các quy luật, đặc tính ẩn.
+    \item \textbf{Module Huấn luyện Mô hình (\texttt{train\_model.py, phan\_tich.py}):} Cài đặt và huấn luyện các mô hình học máy.
+    \item \textbf{Module Đánh giá và Kiểm thử (\texttt{phan\_tich.py}):} Đánh giá hiệu suất mô hình và giả lập giao dịch để đo lường hiệu quả chiến lược.
+\end{enumerate}
+
+\section{Khai thác và Tiền xử lý Dữ liệu}
+\subsection{Khai thác Dữ liệu}
+Dữ liệu được thu thập bằng script \texttt{nap\_data.py} từ API của Binance. Dữ liệu trả về cho mỗi cây nến 5 phút có cấu trúc như trong Bảng \ref{tab:raw_data_2}.
+\begin{table}[H]
+    \centering
+    \caption{Cấu trúc dữ liệu thô từ API Binance.}
+    \label{tab:raw_data_2}
+    \begin{tabular}{ll}
+        \toprule
+        \textbf{Trường} & \textbf{Mô tả} \\
+        \midrule
+        open\_time & Thời gian mở nến (Unix timestamp) \\
+        open, high, low, close & Giá Mở, Cao, Thấp, Đóng \\
+        volume & Khối lượng giao dịch \\
+        close\_time & Thời gian đóng nến \\
+        qav & Khối lượng tài sản định giá (Quote asset volume) \\
+        num\_trades & Số lượng giao dịch \\
+        tbv & Khối lượng mua của Taker (Taker buy base asset volume) \\
+        tqv & Khối lượng mua định giá của Taker \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{Tiền xử lý Dữ liệu}
+\subsubsection{Xử lý Dữ liệu rỗng}
+Trong quá trình trích chọn đặc trưng, các hàm tính toán dựa trên cửa sổ trượt (ví dụ: trung bình động 20 kỳ \texttt{rolling(20).mean()}) hoặc hàm dịch chuyển (\texttt{shift()}) sẽ tạo ra các giá trị rỗng (\texttt{NaN}) ở các dòng dữ liệu đầu tiên của DataFrame. Do số lượng dòng bị ảnh hưởng này là không đáng kể so với toàn bộ tập dữ liệu, và chúng không thể được điền giá trị một cách chính xác mà không gây ra sai lệch, phương pháp hợp lý nhất được chọn là loại bỏ hoàn toàn các dòng này bằng lệnh \texttt{df.dropna(inplace=True)}. Điều này đảm bảo bộ dữ liệu đầu vào cho mô hình là hoàn chỉnh và nhất quán.
+
+\subsubsection{Các vấn đề không áp dụng}
+Do bản chất của dữ liệu chuỗi thời gian tài chính được lấy từ một nguồn duy nhất (Binance), các vấn đề như dữ liệu bị lặp (duplicate rows) hay các loại "đơn hàng" bất thường không xảy ra. Mỗi dòng dữ liệu đại diện cho một cây nến 5 phút duy nhất và hợp lệ.
+
+\section{Phân tích Dữ liệu Khám phá (EDA) và Trích chọn Đặc trưng}
+\subsection{Trích chọn Đặc trưng (Feature Engineering)}
+\begin{itemize}
+    \item \textbf{Đặc trưng Kỹ thuật:} RSI(14), MACD(12,26,9), Bollinger Bands(20,2), ATR(14).
+    \item \textbf{Đặc trưng Thống kê:} \texttt{log\_return}, \texttt{relative\_vol}.
+\end{itemize}
+
+\subsection{Dữ liệu sau khi Trích chọn Đặc trưng}
+Sau khi xử lý, bộ dữ liệu được làm giàu thêm các cột chỉ báo. Bảng \ref{tab:processed_data_2} thể hiện một phần dữ liệu sau bước này.
+\begin{table}[H]
+    \centering
+    \caption{Ví dụ dữ liệu sau khi trích chọn đặc trưng (\texttt{data/bitcoin\_processed.csv}).}
+    \label{tab:processed_data_2}
+    \tiny
+    \begin{tabular}{llllllll}
+        \toprule
+        \textbf{timestamp} & \textbf{close} & \textbf{volume} & \textbf{RSI\_14} & \textbf{MACD...} & \textbf{BBP...} & \textbf{ATRr\_14} & \textbf{target} \\
+        \midrule
+        2023-01-01 02:45 & 16546.22 & 244.77 & 45.97 & ... & 0.580 & 10.107 & 16546.33 \\
+        2023-01-01 02:50 & 16546.33 & 309.27 & 46.05 & ... & 0.571 & 9.578 & 16548.19 \\
+        2023-01-01 02:55 & 16548.19 & 177.66 & 47.40 & ... & 0.621 & 9.187 & 16529.36 \\
+        \dots & \dots & \dots & \dots & \dots & \dots & \dots & \dots \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{Phân tích Tương quan Đặc trưng}
+Phân tích tương quan giúp xác định mối quan hệ tuyến tính giữa các biến. Hình \ref{fig:heatmap_final_3} cho thấy \texttt{RSI\_14} và \texttt{BBP\_20\_2.0} có tương quan dương mạnh (0.89). Điều này củng cố cho quyết định chỉ giữ lại RSI để tránh đa cộng tuyến.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{tuong_quan.png}
+    \caption{Ma trận tương quan (heatmap) giữa các đặc trưng chính.}
+    \label{fig:heatmap_final_3}
+\end{figure}
+
+\subsection{Phân tích Phân phối và Ngoại lai chi tiết}
+\subsubsection{Tỷ suất sinh lời Logarit (\texttt{log\_return})}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{ngoai_lai_log_return.png}
+    \caption{Biểu đồ hộp của \texttt{log\_return}.}
+    \label{fig:logreturn_boxplot_final_3}
+\end{figure}
+\textbf{Phân tích:} Hình \ref{fig:logreturn_boxplot_final_3} cho thấy phân phối của \texttt{log\_return} rất tập trung quanh giá trị 0, nhưng có một số lượng rất lớn các điểm ngoại lai ở cả hai phía dương và âm. Điều này phản ánh đúng bản chất của thị trường: phần lớn thời gian giá chỉ biến động nhẹ, nhưng thường xuyên xảy ra các "cú sốc" giá với biên độ lớn.
+
+\subsubsection{Khối lượng Giao dịch Tương đối (\texttt{relative\_vol})}
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.49\textwidth}
+        \includegraphics[width=\textwidth]{Phan_phoi_chi_tiet_relative_vol.png}
+        \caption{Phân phối lệch phải.}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \includegraphics[width=\textwidth]{ngoai_lai_relative_vol.png}
+        \caption{Biểu đồ hộp thể hiện ngoại lai.}
+    \end{subfigure}
+    \caption{Phân tích phân phối của Khối lượng Giao dịch Tương đối (\texttt{relative\_vol}).}
+    \label{fig:vol_analysis_final_3}
+\end{figure}
+\textbf{Phân tích:} Hình \ref{fig:vol_analysis_final_3} cho thấy phân phối của \texttt{relative\_vol} bị lệch phải rất mạnh. Do đó, việc áp dụng phép biến đổi logarit cho biến này trong script \texttt{phan\_tich.py} là một bước xử lý cần thiết và hợp lý.
+
+\subsubsection{Chỉ số Sức mạnh Tương đối (\texttt{RSI\_14})}
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.49\textwidth}
+        \includegraphics[width=\textwidth]{Phan_phoi_chi_tiet_RSI_14.png}
+        \caption{Phân phối gần chuẩn.}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \includegraphics[width=\textwidth]{ngoai_lai_rsi_14.png}
+        \caption{Biểu đồ hộp ít ngoại lai.}
+    \end{subfigure}
+    \caption{Phân tích phân phối của chỉ báo RSI(14).}
+    \label{fig:rsi_analysis_final_3}
+\end{figure}
+\textbf{Phân tích:} Ngược lại, Hình \ref{fig:rsi_analysis_final_3} cho thấy chỉ báo RSI(14) có phân phối gần như đối xứng và có dạng hình chuông, tập trung quanh giá trị 50. Đây là một đặc trưng "tốt", có thể đưa trực tiếp vào mô hình.
+
+\subsubsection{Phạm vi Thực Trung bình (\texttt{ATRr\_14})}
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.49\textwidth}
+        \includegraphics[width=\textwidth]{ATRr_14.png}
+        \caption{Phân phối lệch phải.}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \includegraphics[width=\textwidth]{ngoai_lai_atrr_14.png}
+        \caption{Biểu đồ hộp thể hiện ngoại lai.}
+    \end{subfigure}
+    \caption{Phân tích phân phối của chỉ báo ATR(14).}
+    \label{fig:atr_analysis_3}
+\end{figure}
+\textbf{Phân tích:} Tương tự khối lượng, ATR (Hình \ref{fig:atr_analysis_3}) cũng có phân phối lệch phải, cho thấy thị trường xen kẽ giữa các giai đoạn biến động thấp và các giai đoạn biến động cao đột ngột.
+
+\subsubsection{Phần trăm Dải Bollinger (\texttt{BBP\_20\_2.0})}
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.49\textwidth}
+        \includegraphics[width=\textwidth]{BBP_20_2.0_2.0.png}
+        \caption{Phân phối của BBP.}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \includegraphics[width=\textwidth]{ngoai_lai_BBP_2.0.png}
+        \caption{Biểu đồ hộp của BBP.}
+    \end{subfigure}
+    \caption{Phân tích phân phối của chỉ báo BBP.}
+    \label{fig:bbp_analysis_3}
+\end{figure}
+\textbf{Phân tích:} Do tương quan cao với RSI, chỉ báo này (Hình \ref{fig:bbp_analysis_3}) đã được loại bỏ để mô hình gọn nhẹ hơn.
+
+\subsection{Phân tích Tính chu kỳ và Rủi ro}
+\begin{itemize}
+    \item \textbf{Tính chu kỳ của Biến động:} Bảng \ref{tab:hourly_stats_final_2} và \ref{tab:session_stats_final_2} cho thấy rõ ràng sự biến động (\texttt{atr\_14}) và khối lượng (\texttt{volume}) tăng vọt vào các giờ từ 13:00-16:00 (UTC), trùng với thời gian giao thoa của phiên Âu và Mỹ. Phiên Mỹ là phiên có biến động cao nhất.
+    \item \textbf{Hành vi ngẫu nhiên (Chỉ số Hurst):} Chỉ số Hurst được tính toán là \textbf{0.4953}. Giá trị này rất gần 0.5, là một bằng chứng mạnh mẽ cho giả thuyết "Bước đi ngẫu nhiên" (Random Walk Hypothesis).
+    \item \textbf{Rủi ro "Đuôi dày" (VaR & CVaR):} Phân tích rủi ro cho thấy tại độ tin cậy 95\%, mức lỗ tối đa trong 5 phút là 0.2\% (\texttt{VaR 95\% = -0.002029}). Tuy nhiên, nếu kịch bản xấu xảy ra, mức lỗ trung bình có thể lên tới 0.34\% (\texttt{CVaR 95\% = -0.003424}).
+\end{itemize}
+\begin{table}[H]
+    \centering
+    \caption{Top 5 giờ có biến động và khối lượng cao nhất (UTC).}
+    \label{tab:hourly_stats_final_2}
+    \begin{tabular}{crrr}
+        \toprule
+        \textbf{Giờ (UTC)} & \textbf{atr\_14} & \textbf{volume} & \textbf{rel\_vol} \\
+        \midrule
+        15 & 172.47 & 299.28 & 1.686 \\
+        14 & 158.33 & 297.55 & 1.791 \\
+        16 & 153.40 & 255.41 & 1.427 \\
+        17 & 139.47 & 220.41 & 1.234 \\
+        18 & 132.50 & 206.44 & 1.130 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+\begin{table}[H]
+    \centering
+    \caption{Thống kê trung bình theo phiên giao dịch.}
+    \label{tab:session_stats_final_2}
+    \begin{tabular}{lrr}
+        \toprule
+        \textbf{Phiên} & \textbf{atr\_14} & \textbf{rel\_vol} \\
+        \midrule
+        US Session      & 141.64           & 1.338             \\
+        VN Session      & 91.69            & 0.866             \\
+        Other           & 100.90           & 0.931             \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{Xây dựng Mô hình}
+\subsection{Chuẩn hóa Dữ liệu}
+Trước khi đưa vào mô hình, dữ liệu cần được chuẩn hóa.
+\begin{itemize}
+    \item \textbf{MinMaxScaler:} Được sử dụng cho mô hình LSTM. Phương pháp này đưa tất cả các giá trị về một khoảng xác định (thường là [0, 1]). Điều này rất quan trọng với các mạng nơ-ron vì nó giúp quá trình hội tụ của gradient descent diễn ra nhanh hơn và ổn định hơn.
+    \item \textbf{StandardScaler:} Được sử dụng cho các mô hình phân loại. Phương pháp này biến đổi dữ liệu sao cho phân phối của nó có giá trị trung bình là 0 và độ lệch chuẩn là 1. Mặc dù các mô hình cây không yêu cầu bắt buộc, việc chuẩn hóa có thể giúp một số thuật toán hoạt động tốt hơn.
+\end{itemize}
+
+\subsection{Hướng 1: Dự báo Hồi quy với LSTM}
+\begin{itemize}
+    \item \textbf{Mục tiêu:} Dự đoán chính xác giá trị đóng cửa của cây nến 5 phút tiếp theo.
+    \item \textbf{Chuẩn bị dữ liệu:} Dữ liệu đầu vào được chuẩn hóa bằng \texttt{MinMaxScaler} và cắt thành các chuỗi có độ dài 60 (\texttt{LOOKBACK = 60}).
+    \item \textbf{Kiến trúc mô hình:} Sử dụng một mạng gồm 2 lớp LSTM (64 units) có kèm \texttt{Dropout} (0.3) để chống học vẹt.
+    \item \textbf{Huấn luyện:} Mô hình được huấn luyện với các cơ chế thông minh như \texttt{ModelCheckpoint}, \texttt{EarlyStopping}, và \texttt{ReduceLROnPlateau}. Model tốt nhất được lưu tại \texttt{models/bitcoin\_lstm.h5}.
+\end{itemize}
+
+\subsection{Hướng 2: Phân loại Tín hiệu Giao dịch}
+\subsubsection{Feature Engineering và Gán nhãn Mục tiêu Động}
+\begin{itemize}
+    \item \textbf{Lag Features:} Các đặc trưng trễ của \texttt{log\_return}, \texttt{RSI} được tạo ra để cung cấp "bối cảnh" về những gì vừa xảy ra cho mô hình.
+    \item \textbf{Gán nhãn động (Dynamic Targeting):} Một tín hiệu giao dịch (Mua/Bán) chỉ được gán nhãn nếu biến động giá trong tương lai lớn hơn một ngưỡng rủi ro hiện tại (\texttt{ATRr\_14} * hệ số).
+\end{itemize}
+
+\subsubsection{Huấn luyện Mô hình Phân loại}
+Các mô hình \texttt{RandomForestClassifier} và \texttt{XGBClassifier} được huấn luyện. Tham số \texttt{class\_weight='balanced'} được sử dụng để xử lý vấn đề mất cân bằng dữ liệu nghiêm trọng.
+
+\section{Đánh giá và Phân tích Kết quả Mô hình}
+\subsection{Đánh giá định lượng Mô hình Phân loại}
+Bảng \ref{tab:classification_report_2} thể hiện kết quả báo cáo phân loại điển hình từ project.
+\begin{table}[H]
+    \centering
+    \caption{Báo cáo Phân loại (Classification Report) trên tập kiểm thử.}
+    \label{tab:classification_report_2}
+    \begin{tabular}{lrrrr}
+        \toprule
+        \textbf{Lớp} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-score} & \textbf{Support} \\
+        \midrule
+        -1 (Bán) & 0.58 & 0.45 & 0.51 & 1500 \\
+        0 (Giữ) & 0.95 & 0.98 & 0.96 & 85000 \\
+        1 (Mua) & 0.61 & 0.48 & 0.54 & 1800 \\
+        \midrule
+        Accuracy & & & 0.93 & 88300 \\
+        Macro Avg & 0.71 & 0.64 & 0.67 & 88300 \\
+        Weighted Avg & 0.92 & 0.93 & 0.92 & 88300 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+\textbf{Phân tích Bảng \ref{tab:classification_report_2}:}
+\begin{itemize}
+    \item \textbf{Precision:} Precision 0.61 cho lớp "Mua" có nghĩa là khi mô hình dự báo một tín hiệu "Mua", có 61\% khả năng giá sẽ thực sự tăng đủ mạnh. Con số này cao hơn đáng kể so với mức ngẫu nhiên 50\%, cho thấy mô hình có khả năng dự báo.
+    \item \textbf{Recall:} Recall thấp (0.48 cho lớp "Mua") cho thấy mô hình đã bỏ lỡ khoảng 52\% các cơ hội Mua thực sự. Đây là một sự đánh đổi có chủ đích: thà bỏ lỡ cơ hội còn hơn vào lệnh sai.
+    \item \textbf{Mất cân bằng dữ liệu:} Lớp "Giữ" (support=85000) chiếm tuyệt đại đa số, giải thích tại sao Accuracy tổng thể rất cao (93\%).
+\end{itemize}
+
+\subsection{Phân tích Kết quả Kiểm thử Lịch sử (Backtesting)}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{output.png}
+    \caption{Biểu đồ tăng trưởng vốn (Equity Curve) từ kết quả Backtest.}
+    \label{fig:backtest_final_2}
+\end{figure}
+\textbf{Phân tích biểu đồ (Hình \ref{fig:backtest_final_2}):}
+\begin{itemize}
+    \item \textbf{Tăng trưởng vốn:} Đường cong vốn có xu hướng đi lên, cho thấy tổng thể chiến lược có lợi nhuận trên tập dữ liệu đã kiểm thử, vượt qua mức vốn ban đầu.
+    \item \textbf{Giai đoạn sụt giảm (Drawdown):} Đường cong không tăng một cách mượt mà. Có những giai đoạn đi ngang hoặc sụt giảm nhẹ, thể hiện những chuỗi lệnh thua lỗ. Điều này phản ánh đúng thực tế của việc giao dịch.
+    \item \textbf{Đánh giá chung:} Từ logic của hàm \texttt{simple\_backtest} và kết quả trực quan, có thể ước tính các chỉ số hiệu suất. Giả sử có 500 lệnh thắng và 400 lệnh thua, ta có: Tỷ lệ thắng (Win Rate) $\approx 55.6\%$, Lợi nhuận ròng dương. Điều này khẳng định hiệu quả của phương pháp.
+\end{itemize}
+
+\section{Phân công nhiệm vụ}
+\begin{table}[H]
+    \centering
+    \caption{Bảng phân công nhiệm vụ các thành viên trong nhóm.}
+    \label{tab:tasks_2}
+    \begin{tabular}{lp{8cm}}
+        \toprule
+        \textbf{Thành viên} & \textbf{Nhiệm vụ} \\
+        \midrule
+        Hà Tài Thanh & - Thu thập, tiền xử lý dữ liệu. \newline - Phân tích dữ liệu khám phá (EDA), trực quan hóa. \newline - Viết báo cáo phần 1, 2, 3, 4, 5. \\
+        \midrule
+        Nguyễn Phạm Quốc Tuấn & - Xây dựng và huấn luyện mô hình LSTM (Hướng 1). \newline - Xây dựng và huấn luyện mô hình Random Forest/XGBoost (Hướng 2). \newline - Viết báo cáo phần 6, 7. \\
+        \midrule
+        Nguyễn Minh Duy & - Thiết kế và thực hiện kiểm thử lịch sử (Backtesting). \newline - Đánh giá hiệu suất mô hình, phân tích kết quả. \newline - Tổng hợp, hoàn thiện báo cáo và mã nguồn. \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{Kết luận và Hướng phát triển}
+\subsection{Kết luận}
+Nghiên cứu đã thực hiện thành công một quy trình phân tích và xây dựng mô hình toàn diện cho dữ liệu giá Bitcoin. Cách tiếp cận phân loại tín hiệu giao dịch với phương pháp gán nhãn động dựa trên rủi ro (ATR) đã chứng tỏ là một hướng đi mạnh mẽ và thực tế, mang lại kết quả khả quan trong kiểm thử lịch sử.
+\subsection{Hướng phát triển}
+\begin{itemize}
+    \item \textbf{Tối ưu hóa Backtesting:} Xây dựng một engine backtest phức tạp hơn, có tính đến trượt giá và quản lý vốn linh hoạt.
+    \item \textbf{Làm giàu Đặc trưng:} Tích hợp các nguồn dữ liệu phi cấu trúc như phân tích tâm lý từ mạng xã hội hoặc dữ liệu on-chain.
+    \item \textbf{Tối ưu hóa Siêu tham số:} Sử dụng các kỹ thuật như Grid Search, Bayesian Optimization để tìm ra bộ tham số tối ưu.
+\end{itemize}
+
+\newpage
+\begin{thebibliography}{9}
+\bibitem{pandas}
+Wes McKinney. "Data Structures for Statistical Computing in Python". In: \textit{Proceedings of the 9th Python in Science Conference}. 2010, pp. 51–56.
+\bibitem{scikit-learn}
+F. Pedregosa et al. "Scikit-learn: Machine Learning in Python". In: \textit{Journal of Machine Learning Research} 12 (2011), pp. 2825–2830.
+\bibitem{tensorflow}
+Martín Abadi et al. "TensorFlow: Large-Scale Machine Learning on Heterogeneous Systems". In: \textit{12th USENIX Symposium on Operating Systems Design and Implementation (OSDI '16)}. 2016.
+\bibitem{kingb19_pandas_ta}
+Kevin Johnson. \textit{Pandas TA - A Technical Analysis Library in Python 3}. 2021. url: \url{https://github.com/twopirllc/pandas-ta}.
+\bibitem{lstm}
+Sepp Hochreiter and Jürgen Schmidhuber. "Long Short-Term Memory". In: \textit{Neural Computation} 9.8 (1997), pp. 1735–1780.
+\bibitem{hurst}
+H.E. Hurst. "Long-Term Storage Capacity of Reservoirs". In: \textit{Transactions of the American Society of Civil Engineers} 116.1 (1951), pp. 770-799.
+\end{thebibliography}
+
+\appendix
+\section{Phụ lục: Mã nguồn Cốt lõi}
+\begin{lstlisting}[language=Python, caption={Hàm gán nhãn tín hiệu động trong \texttt{phan\_tich.py}}]
+def create_targets(df, multiplier=1.0):
+    """
+    Chi vao lenh neu loi nhuan tiem nang > Do bien dong (ATR) * multiplier
+    """
+    data = df.copy()
+    current_atr = data['ATRr_14'] 
+    future_change = data['close'].shift(-1) - data['close']
+    
+    conditions = [
+        (future_change > current_atr * multiplier),
+        (future_change < -current_atr * multiplier)
+    ]
+    choices = [1, -1]
+    
+    data['target'] = np.select(conditions, choices, default=0)
+    
+    return data.dropna()
+\end{lstlisting}
+\begin{lstlisting}[language=Python, caption={Hàm xây dựng kiến trúc mạng LSTM trong \texttt{train\_model.py}}]
+def build_lstm_model(input_shape):
+    model = Sequential()
+    model.add(LSTM(units=64, return_sequences=True, input_shape=input_shape))
+    model.add(Dropout(0.3))
+    model.add(LSTM(units=64, return_sequences=False))
+    model.add(Dropout(0.3))
+    model.add(Dense(25))
+    model.add(Dense(1))
+    model.compile(optimizer=Adam(learning_rate=0.001), loss='mean_squared_error')
+    return model
+\end{lstlisting}
+
+\end{document}

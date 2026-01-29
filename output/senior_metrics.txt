@@ -1,0 +1,6 @@
+Hurst Exponent: 0.4953
+Interpret: Random
+Amihud Illiquidity Score: 0.186490
+VaR 95% (5m): -0.002029
+VaR 99% (5m): -0.004088
+Expected Shortfall (CVaR 95%): -0.003424
